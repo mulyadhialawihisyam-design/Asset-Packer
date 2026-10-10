@@ -30,7 +30,6 @@
       }
     };
   </script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
@@ -108,7 +107,7 @@
     /* ---------- Tabel ---------- */
     .tbl { width: 100%; border-collapse: collapse; }
     .tbl th { text-align: left; font-size: 12.5px; font-weight: 600; color: #8a9bb8; padding: 10px 14px; border-bottom: 1px solid #243350; white-space: nowrap; }
-    .tbl td { padding: 14px; border-bottom: 1px solid #1a2742; vertical-align: top; }
+    .tbl td { padding: 14px; border-bottom: 1px solid #1a2742; vertical-align: middle; }
     .tbl tbody tr:last-child td { border-bottom: 0; }
     .tbl tbody tr { transition: background .15s; }
     .tbl tbody tr:hover { background: rgba(110,168,255,.05); }
@@ -192,6 +191,7 @@
     #reader { width: 100%; min-height: 260px; border-radius: 16px; overflow: hidden; background: #000; border: 1px solid #243350 !important; }
     #reader video { width: 100% !important; object-fit: cover; }
     .scan-line { position: absolute; left: 10%; right: 10%; height: 2px; background: #ff6b7a; box-shadow: 0 0 12px #ff6b7a; border-radius: 2px; pointer-events: none; animation: scanMove 2s ease-in-out infinite; }
+    .scan-line.hidden { display: none; }
     @keyframes scanMove { 0%, 100% { top: 30%; } 50% { top: 62%; } }
     .chk { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #b9c6dd; cursor: pointer; user-select: none; }
     .chk input { width: 18px; height: 18px; accent-color: #6ea8ff; }
@@ -250,24 +250,12 @@
           <div>
             <label for="inpId" class="block text-sm font-semibold text-muted mb-2">ID asset</label>
             <div class="id-row">
-              <input id="inpId" class="field" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Scan atau ketik ID, misal CTR-014">
+              <input id="inpId" class="field" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Scan atau ketik ID asset">
               <button id="btnCamera" type="button" class="btn-cam" aria-label="Scan dengan kamera belakang" title="Scan dengan kamera belakang">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
               </button>
             </div>
             <label class="chk mt-3"><input id="chkAuto" type="checkbox"> Langsung simpan setelah scan kamera</label>
-          </div>
-
-          <div>
-            <label for="inpUser" class="block text-sm font-semibold text-muted mb-2">User / PIC <span id="optUser" class="font-normal hidden">(opsional saat kembali)</span></label>
-            <input id="inpUser" class="field" type="text" list="dlUser" autocomplete="off" placeholder="Nama packer">
-            <datalist id="dlUser"></datalist>
-          </div>
-
-          <div>
-            <label for="inpZona" class="block text-sm font-semibold text-muted mb-2">Zona <span id="optZona" class="font-normal hidden">(opsional saat kembali)</span></label>
-            <input id="inpZona" class="field" type="text" list="dlZona" autocomplete="off" placeholder="Contoh: Zona A">
-            <datalist id="dlZona"></datalist>
           </div>
 
           <button id="btnSave" type="button" class="btn-save">
@@ -290,7 +278,7 @@
             <label for="inpSearch" class="sr-only">Pencarian pintar</label>
             <div class="relative">
               <svg class="absolute left-3.5 top-3.5 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-              <textarea id="inpSearch" rows="1" class="field" style="padding-left:42px;resize:none;overflow:hidden" spellcheck="false" placeholder="Cari ID, PIC, atau zona. Tempel beberapa ID (pisah koma atau baris baru) untuk melacak sekaligus."></textarea>
+              <textarea id="inpSearch" rows="1" class="field" style="padding-left:42px;resize:none;overflow:hidden" spellcheck="false" placeholder="Cari ID asset. Tempel beberapa ID (pisah koma atau baris baru) untuk melacak sekaligus."></textarea>
             </div>
           </div>
 
@@ -306,8 +294,8 @@
             <table class="tbl">
               <thead>
                 <tr>
-                  <th>Asset &amp; PIC</th>
-                  <th>Tanggal pinjam</th>
+                  <th>ID asset</th>
+                  <th>Waktu pinjam</th>
                   <th>Durasi pinjam</th>
                 </tr>
               </thead>
@@ -362,7 +350,7 @@
      * - Kamera HP hanya bisa dipakai di halaman HTTPS yang tidak berada di dalam
      *   iframe Apps Script, jadi gunakan hosting luar (GitHub Pages) untuk scan.
      * ===================================================================== */
-    const API_URL = 'https://script.google.com/macros/s/AKfycbzTXWr4IpU12DljgwYgUUo-SU3SCvAw1WxsjaqMnnVkOXhybCfofwbdS6bNHgDjfh-b/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyXIRhe4NTtjCCHD4LGgqUWLGVuLJyMt4fasUdG0PbbwB5miH9284hgP-UH4jlaKT2E/exec';
     const AUTO_REFRESH_MS = 30000;
     const LATE_WARN_MS = 4 * 3600 * 1000;
     const LATE_DANGER_MS = 24 * 3600 * 1000;
@@ -513,7 +501,6 @@
         state.loadedOnce = true;
         const t = new Date();
         setSync('ok', 'Tersinkron ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds()));
-        refreshSuggestions();
         render();
       } catch (err) {
         setSync('error', 'Gagal sinkron');
@@ -526,17 +513,6 @@
         state.loading = false;
         $('refreshIcon').style.animation = '';
       }
-    }
-
-    function refreshSuggestions() {
-      const users = new Set();
-      const zonas = new Set();
-      state.assets.forEach((a) => {
-        if (a.user) users.add(a.user);
-        if (a.zona) zonas.add(a.zona);
-      });
-      $('dlUser').innerHTML = Array.from(users).sort().map((u) => '<option value="' + esc(u) + '">').join('');
-      $('dlZona').innerHTML = Array.from(zonas).sort().map((z) => '<option value="' + esc(z) + '">').join('');
     }
 
     /* ------------------------- Render ------------------------- */
@@ -558,7 +534,7 @@
     function renderSkeleton() {
       $('emptyState').classList.add('hidden');
       $('tbody').innerHTML = [0, 1, 2, 3].map(() =>
-        '<tr><td><div class="skeleton" style="height:16px;width:140px"></div><div class="skeleton mt-2" style="height:12px;width:100px"></div></td>' +
+        '<tr><td><div class="skeleton" style="height:16px;width:140px"></div></td>' +
         '<td><div class="skeleton" style="height:14px;width:100px"></div></td>' +
         '<td><div class="skeleton" style="height:16px;width:90px"></div></td></tr>').join('');
     }
@@ -576,8 +552,8 @@
 
       if (tokens.length) {
         rows = rows.filter((a) => {
-          const hay = (a.id + ' ' + a.user + ' ' + a.zona).toUpperCase();
-          return tokens.some((t) => hay.indexOf(t) !== -1);
+          const id = String(a.id).toUpperCase();
+          return tokens.some((t) => id.indexOf(t) !== -1);
         });
       }
 
@@ -589,7 +565,7 @@
         empty.classList.remove('hidden');
         if (tokens.length) {
           $('emptyTitle').textContent = 'Tidak ada hasil yang cocok';
-          $('emptyText').textContent = 'Tidak ada asset yang sedang dipinjam dengan kata kunci tersebut pada filter ini.';
+          $('emptyText').textContent = 'Tidak ada asset yang sedang dipinjam dengan ID tersebut pada filter ini.';
         } else {
           const nama = state.filter === 'all' ? 'asset' : JENIS_LABEL[state.filter];
           $('emptyTitle').textContent = 'Tidak ada ' + nama + ' yang sedang dipinjam';
@@ -603,8 +579,7 @@
         const p = fmtDateParts(a.borrowTs);
         return '<tr>' +
           '<td><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[15px]">' + esc(a.id) + '</span>' +
-          (state.filter === 'all' ? '<span class="badge">' + esc(JENIS_LABEL[a.jenis] || a.jenis) + '</span>' : '') + '</div>' +
-          '<div class="text-sm text-muted mt-1">' + esc(a.user || '-') + ' di ' + esc(a.zona || '-') + '</div></td>' +
+          (state.filter === 'all' ? '<span class="badge">' + esc(JENIS_LABEL[a.jenis] || a.jenis) + '</span>' : '') + '</div></td>' +
           '<td class="whitespace-nowrap"><div class="text-sm font-semibold">' + esc(p.date) + '</div><div class="text-sm text-muted num">' + esc(p.time) + ' WIB</div></td>' +
           '<td><span class="dur num" data-ts="' + a.borrowTs + '">00:00:00</span></td>' +
           '</tr>';
@@ -614,7 +589,7 @@
     function renderTrack() {
       const tokens = tokensFromQuery();
       const panel = $('trackPanel');
-      const map = new Map(state.assets.map((a) => [a.id, a]));
+      const map = new Map(state.assets.map((a) => [String(a.id).toUpperCase(), a]));
       const show = tokens.length >= 2 || (tokens.length === 1 && map.has(tokens[0]));
 
       if (!show) {
@@ -632,9 +607,10 @@
         const label = JENIS_LABEL[a.jenis] || a.jenis;
         if (a.status === 'PINJAM') {
           out++;
+          const p = fmtDateParts(a.borrowTs);
           return '<div class="chip out"><span class="font-bold">' + esc(a.id) + ' <span class="badge">' + esc(label) + '</span></span>' +
             '<span class="text-xs text-rose font-semibold">Belum kembali</span>' +
-            '<span class="text-xs text-muted">' + esc(a.user || '-') + ' di ' + esc(a.zona || '-') + '</span>' +
+            '<span class="text-xs text-muted num">Dipinjam ' + esc(p.date) + ' ' + esc(p.time) + '</span>' +
             '<span class="dur dur-late num text-xs" data-ts="' + a.borrowTs + '">00:00:00</span></div>';
         }
         back++;
@@ -693,9 +669,6 @@
         b.className = on ? (b.dataset.value === 'PINJAM' ? 'on-pinjam' : 'on-kembali') : '';
         b.setAttribute('aria-pressed', on);
       });
-      const isReturn = state.aksi === 'KEMBALI';
-      $('optUser').classList.toggle('hidden', !isReturn);
-      $('optZona').classList.toggle('hidden', !isReturn);
     }
 
     bindSegment('segJenis', (v) => { state.jenis = v; paintSegments(); });
@@ -724,14 +697,7 @@
     $('inpId').addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      if (state.aksi === 'KEMBALI') { submit(); return; }
-      $('inpUser').focus();
-    });
-    $('inpUser').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); $('inpZona').focus(); }
-    });
-    $('inpZona').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      submit();
     });
     $('btnSave').addEventListener('click', submit);
 
@@ -742,29 +708,23 @@
       btn.classList.toggle('is-loading', on);
       $('btnSpinner').classList.toggle('hidden', !on);
       $('btnLabel').textContent = on ? 'Menyinkronkan ke cloud…' : 'Simpan ke Cloud Database';
-      ['inpId', 'inpUser', 'inpZona', 'btnCamera'].forEach((id) => { $(id).disabled = on; });
+      ['inpId', 'btnCamera'].forEach((id) => { $(id).disabled = on; });
     }
 
     async function submit() {
       if (state.busy) return;
 
       const id = $('inpId').value.trim().toUpperCase();
-      const user = $('inpUser').value.trim();
-      const zona = $('inpZona').value.trim();
       const label = JENIS_LABEL[state.jenis];
 
       if (!id) {
         showModal({ type: 'error', title: 'ID asset kosong', message: 'Scan atau ketik ID ' + label + ' terlebih dahulu.' });
         return;
       }
-      if (state.aksi === 'PINJAM' && (!user || !zona)) {
-        showModal({ type: 'error', title: 'Data belum lengkap', message: 'User / PIC dan Zona wajib diisi saat meminjam ' + label + ' ' + id + '.' });
-        return;
-      }
 
       setBusy(true);
       try {
-        const res = await apiScan({ id: id, jenis: state.jenis, aksi: state.aksi, user: user, zona: zona });
+        const res = await apiScan({ id: id, jenis: state.jenis, aksi: state.aksi });
 
         if (res && res.success) {
           const d = res.data || {};
@@ -776,13 +736,9 @@
             details: [
               ['Asset', label + ' ' + (d.id || id)],
               ['Status', d.aksi || state.aksi],
-              ['PIC', d.user || user || '-'],
-              ['Zona', d.zona || zona || '-'],
               ['Waktu', p.date + ' ' + p.time + ' WIB']
             ]
           });
-          if (user) store('amp_user', user);
-          if (zona) store('amp_zona', zona);
           $('inpId').value = '';
           state.filter = state.jenis;
           loadData(true);
@@ -933,11 +889,8 @@
       $('inpId').value = code;
       await closeScanner();
 
-      const complete = state.aksi === 'KEMBALI' || ($('inpUser').value.trim() && $('inpZona').value.trim());
-      if (complete && $('chkAuto').checked) {
+      if ($('chkAuto').checked) {
         submit();
-      } else if (!complete) {
-        ($('inpUser').value.trim() ? $('inpZona') : $('inpUser')).focus();
       } else {
         $('btnSave').focus();
       }
@@ -962,8 +915,6 @@
 
     /* ------------------------- Inisialisasi ------------------------- */
     (function init() {
-      $('inpUser').value = load('amp_user');
-      $('inpZona').value = load('amp_zona');
       $('chkAuto').checked = load('amp_auto') === '1';
       paintSegments();
       renderTabs();
