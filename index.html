@@ -31,6 +31,8 @@
     };
   </script>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
   <style>
     html, body { background: #0a1020; }
     body {
@@ -167,6 +169,33 @@
     #modalOk.ok-success { background: #3ddc97; color: #04170d; }
     #modalOk.ok-error { background: #ff6b7a; color: #1d0509; }
 
+    /* ---------- Scanner kamera ---------- */
+    .id-row { display: flex; gap: 8px; }
+    .btn-cam {
+      flex: 0 0 48px; width: 48px; border-radius: 12px; border: 1px solid #3a5384; background: #1d2c4b; color: #6ea8ff;
+      display: flex; align-items: center; justify-content: center; transition: background .15s, transform .12s;
+    }
+    .btn-cam:hover { background: #24375d; }
+    .btn-cam:active { transform: scale(.95); }
+    .btn-cam:focus-visible { outline: 2px solid #6ea8ff; outline-offset: 2px; }
+    .btn-cam:disabled { opacity: .5; cursor: wait; }
+
+    .scan-overlay { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .scan-overlay.hidden { display: none; }
+    .scan-backdrop { position: absolute; inset: 0; background: rgba(4,8,18,.82); backdrop-filter: blur(5px); animation: fadeIn .2s ease-out both; }
+    .scan-card {
+      position: relative; width: 100%; max-width: 440px; background: #111a2e; border: 1px solid #243350; border-radius: 22px;
+      padding: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.55); animation: popIn .3s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .scan-overlay.closing .scan-backdrop { animation: fadeOut .2s ease-in both; }
+    .scan-overlay.closing .scan-card { animation: cardOut .2s ease-in both; }
+    #reader { width: 100%; min-height: 260px; border-radius: 16px; overflow: hidden; background: #000; border: 1px solid #243350 !important; }
+    #reader video { width: 100% !important; object-fit: cover; }
+    .scan-line { position: absolute; left: 10%; right: 10%; height: 2px; background: #ff6b7a; box-shadow: 0 0 12px #ff6b7a; border-radius: 2px; pointer-events: none; animation: scanMove 2s ease-in-out infinite; }
+    @keyframes scanMove { 0%, 100% { top: 30%; } 50% { top: 62%; } }
+    .chk { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #b9c6dd; cursor: pointer; user-select: none; }
+    .chk input { width: 18px; height: 18px; accent-color: #6ea8ff; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
@@ -220,7 +249,13 @@
 
           <div>
             <label for="inpId" class="block text-sm font-semibold text-muted mb-2">ID asset</label>
-            <input id="inpId" class="field" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Scan atau ketik ID, misal CTR-014">
+            <div class="id-row">
+              <input id="inpId" class="field" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Scan atau ketik ID, misal CTR-014">
+              <button id="btnCamera" type="button" class="btn-cam" aria-label="Scan dengan kamera belakang" title="Scan dengan kamera belakang">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+              </button>
+            </div>
+            <label class="chk mt-3"><input id="chkAuto" type="checkbox"> Langsung simpan setelah scan kamera</label>
           </div>
 
           <div>
@@ -288,6 +323,25 @@
     </div>
   </div>
 
+  <!-- ===================== SCANNER KAMERA ===================== -->
+  <div id="scanOverlay" class="scan-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+    <div id="scanBackdrop" class="scan-backdrop"></div>
+    <div class="scan-card">
+      <div class="flex items-center justify-between mb-3">
+        <h3 id="scanTitle" class="text-lg font-extrabold">Scan kode asset</h3>
+        <button id="btnScanClose" type="button" class="btn-ghost">Tutup</button>
+      </div>
+      <div class="relative">
+        <div id="reader"></div>
+        <div id="scanLine" class="scan-line hidden"></div>
+      </div>
+      <p id="scanStatus" class="text-sm text-muted mt-3 text-center">Membuka kamera…</p>
+      <div class="flex gap-2 mt-3">
+        <button id="btnTorch" type="button" class="btn-ghost hidden flex-1 justify-center">Nyalakan lampu</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== MODAL ===================== -->
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMsg">
     <div id="modalBackdrop" class="modal-backdrop"></div>
@@ -303,10 +357,12 @@
   <script>
     /* =====================================================================
      * KONFIGURASI
-     * - Dijalankan di dalam Apps Script (HtmlService): biarkan API_URL kosong.
-     * - Di-host di luar (misal GitHub Pages): isi dengan URL Web App (https://script.google.com/macros/s/AKfycbxH95o47rGkCs4LXbMoLlm5J3MqzZTXHqvOiHAiz3GhvgyREK4F4O4dO7zlH6fZcht8/exec).
+     * - API_URL = URL Web App Apps Script (.../exec), dipakai saat index.html
+     *   di-host di luar Apps Script (misal GitHub Pages).
+     * - Kamera HP hanya bisa dipakai di halaman HTTPS yang tidak berada di dalam
+     *   iframe Apps Script, jadi gunakan hosting luar (GitHub Pages) untuk scan.
      * ===================================================================== */
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxH95o47rGkCs4LXbMoLlm5J3MqzZTXHqvOiHAiz3GhvgyREK4F4O4dO7zlH6fZcht8/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzREkkNOTLODWLQSztp9uVUU1Uii9y4tRwI7o1Vncywpul-G3LThtR-VkL9iCV95pJL/exec';
     const AUTO_REFRESH_MS = 30000;
     const LATE_WARN_MS = 4 * 3600 * 1000;
     const LATE_DANGER_MS = 24 * 3600 * 1000;
@@ -327,7 +383,7 @@
     };
 
     const $ = (id) => document.getElementById(id);
-    const USE_GAS = !API_URL && typeof google !== 'undefined' && google.script && google.script.run;
+    const USE_GAS = typeof google !== 'undefined' && google.script && google.script.run;
 
     /* ------------------------- API layer ------------------------- */
     function callGas(fnName, payload) {
@@ -339,7 +395,7 @@
 
     async function apiGetData() {
       if (USE_GAS) return callGas('apiGetData');
-      if (!API_URL) throw new Error('API_URL belum diisi dan halaman tidak berjalan di dalam Apps Script.');
+      if (!API_URL) throw new Error('API_URL belum diisi.');
       const res = await fetch(API_URL + '?action=getData&_=' + Date.now());
       if (!res.ok) throw new Error('Server membalas HTTP ' + res.status + '.');
       return res.json();
@@ -347,7 +403,7 @@
 
     async function apiScan(payload) {
       if (USE_GAS) return callGas('apiScan', payload);
-      if (!API_URL) throw new Error('API_URL belum diisi dan halaman tidak berjalan di dalam Apps Script.');
+      if (!API_URL) throw new Error('API_URL belum diisi.');
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -686,7 +742,7 @@
       btn.classList.toggle('is-loading', on);
       $('btnSpinner').classList.toggle('hidden', !on);
       $('btnLabel').textContent = on ? 'Menyinkronkan ke cloud…' : 'Simpan ke Cloud Database';
-      ['inpId', 'inpUser', 'inpZona'].forEach((id) => { $(id).disabled = on; });
+      ['inpId', 'inpUser', 'inpZona', 'btnCamera'].forEach((id) => { $(id).disabled = on; });
     }
 
     async function submit() {
@@ -750,10 +806,165 @@
       }
     }
 
+    /* ------------------------- Scanner kamera belakang ------------------------- */
+    let scanner = null;
+    let scanToken = 0;
+    let scanDecoded = false;
+    let torchFeature = null;
+    let torchOn = false;
+
+    function scanFormats() {
+      const F = window.Html5QrcodeSupportedFormats;
+      if (!F) return undefined;
+      return [F.QR_CODE, F.CODE_128, F.CODE_39, F.CODE_93, F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.ITF];
+    }
+
+    function scanErrorMessage(err) {
+      const name = err && err.name ? err.name : '';
+      const text = String(err && err.message ? err.message : err || '');
+      const inFrame = window.self !== window.top;
+      if (name === 'NotAllowedError' || /permission|denied|NotAllowed/i.test(text)) {
+        return inFrame
+          ? 'Izin kamera diblokir karena halaman dibuka di dalam Apps Script. Buka index.html lewat hosting HTTPS (misal GitHub Pages) agar kamera bisa dipakai.'
+          : 'Izin kamera ditolak. Aktifkan izin kamera untuk situs ini di pengaturan browser, lalu coba lagi.';
+      }
+      if (name === 'NotFoundError' || /not ?found|no camera/i.test(text)) return 'Kamera tidak ditemukan di perangkat ini.';
+      if (name === 'NotReadableError' || /not ?readable|in use/i.test(text)) return 'Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.';
+      return 'Kamera tidak bisa dibuka. ' + text;
+    }
+
+    async function startCamera(cameraConfig, token) {
+      const config = {
+        fps: 10,
+        qrbox: (w, h) => {
+          const bw = Math.floor(w * 0.85);
+          const bh = Math.max(110, Math.floor(Math.min(h * 0.6, bw * 0.55)));
+          return { width: bw, height: bh };
+        }
+      };
+      await scanner.start(cameraConfig, config, onScanDecoded, function () { /* frame tanpa kode, abaikan */ });
+      if (token !== scanToken) {
+        try { await scanner.stop(); } catch (e) { /* diabaikan */ }
+        return false;
+      }
+      return true;
+    }
+
+    async function openScanner() {
+      if (state.busy) return;
+      if (typeof Html5Qrcode === 'undefined') {
+        showModal({ type: 'error', title: 'Pemindai belum siap', message: 'Library kamera gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.' });
+        return;
+      }
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showModal({ type: 'error', title: 'Kamera tidak tersedia', message: 'Kamera hanya bisa dipakai pada halaman HTTPS. Buka index.html lewat hosting HTTPS seperti GitHub Pages.' });
+        return;
+      }
+
+      const token = ++scanToken;
+      scanDecoded = false;
+      torchFeature = null;
+      torchOn = false;
+      $('btnTorch').classList.add('hidden');
+      $('btnTorch').textContent = 'Nyalakan lampu';
+      $('scanLine').classList.add('hidden');
+      $('scanStatus').textContent = 'Membuka kamera belakang…';
+      const ov = $('scanOverlay');
+      ov.classList.remove('closing', 'hidden');
+
+      try {
+        scanner = new Html5Qrcode('reader', { formatsToSupport: scanFormats(), useBarCodeDetectorIfSupported: true, verbose: false });
+        let ok;
+        try {
+          ok = await startCamera({ facingMode: 'environment' }, token);
+        } catch (firstErr) {
+          // Fallback: cari kamera belakang dari daftar perangkat
+          const cams = await Html5Qrcode.getCameras();
+          if (!cams || !cams.length) throw firstErr;
+          const back = cams.find((c) => /back|rear|belakang|environment/i.test(c.label)) || cams[cams.length - 1];
+          ok = await startCamera(back.id, token);
+        }
+        if (!ok) return;
+
+        $('scanStatus').textContent = 'Arahkan kamera ke barcode atau QR pada asset.';
+        $('scanLine').classList.remove('hidden');
+        try {
+          const feature = scanner.getRunningTrackCameraCapabilities().torchFeature();
+          if (feature && feature.isSupported()) {
+            torchFeature = feature;
+            $('btnTorch').classList.remove('hidden');
+          }
+        } catch (e) { /* lampu tidak didukung */ }
+      } catch (err) {
+        await closeScanner();
+        showModal({ type: 'error', title: 'Kamera gagal dibuka', message: scanErrorMessage(err) });
+      }
+    }
+
+    async function closeScanner() {
+      scanToken++;
+      const ov = $('scanOverlay');
+      const sc = scanner;
+      scanner = null;
+      torchFeature = null;
+      torchOn = false;
+      $('scanLine').classList.add('hidden');
+      $('btnTorch').classList.add('hidden');
+
+      if (sc) {
+        try { await sc.stop(); } catch (e) { /* belum berjalan */ }
+        try { sc.clear(); } catch (e) { /* diabaikan */ }
+      }
+      if (ov.classList.contains('hidden') || ov.classList.contains('closing')) return;
+      ov.classList.add('closing');
+      setTimeout(() => {
+        ov.classList.add('hidden');
+        ov.classList.remove('closing');
+      }, 210);
+    }
+
+    async function onScanDecoded(text) {
+      if (scanDecoded) return;
+      scanDecoded = true;
+      const code = String(text || '').trim().toUpperCase();
+      if (!code) { scanDecoded = false; return; }
+
+      if (navigator.vibrate) navigator.vibrate(70);
+      $('inpId').value = code;
+      await closeScanner();
+
+      const complete = state.aksi === 'KEMBALI' || ($('inpUser').value.trim() && $('inpZona').value.trim());
+      if (complete && $('chkAuto').checked) {
+        submit();
+      } else if (!complete) {
+        ($('inpUser').value.trim() ? $('inpZona') : $('inpUser')).focus();
+      } else {
+        $('btnSave').focus();
+      }
+    }
+
+    $('btnCamera').addEventListener('click', openScanner);
+    $('btnScanClose').addEventListener('click', closeScanner);
+    $('scanBackdrop').addEventListener('click', closeScanner);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeScanner(); });
+    $('chkAuto').addEventListener('change', (e) => store('amp_auto', e.target.checked ? '1' : '0'));
+    $('btnTorch').addEventListener('click', async () => {
+      if (!torchFeature) return;
+      try {
+        torchOn = !torchOn;
+        await torchFeature.apply(torchOn);
+        $('btnTorch').textContent = torchOn ? 'Matikan lampu' : 'Nyalakan lampu';
+      } catch (e) {
+        torchOn = false;
+        $('btnTorch').classList.add('hidden');
+      }
+    });
+
     /* ------------------------- Inisialisasi ------------------------- */
     (function init() {
       $('inpUser').value = load('amp_user');
       $('inpZona').value = load('amp_zona');
+      $('chkAuto').checked = load('amp_auto') === '1';
       paintSegments();
       renderTabs();
       renderSkeleton();
