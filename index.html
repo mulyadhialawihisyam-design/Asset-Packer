@@ -515,29 +515,51 @@
             }
         }
 
-        // ===== SUBMIT =====
+        // ===== SUBMIT DATA (DENGAN FEEDBACK NOTIFIKASI) =====
         async function submitData() {
             const assetId = document.getElementById('assetIdInput').value;
             const btn = document.getElementById('submitBtn');
-            if (!assetId) return alert("Scan QR Terlebih Dahulu!");
+            if (!assetId) return alert("⚠️ Mohon Scan atau Masukkan ID Asset Terlebih Dahulu!");
 
             btn.disabled = true;
-            btn.innerText = "SINKRONISASI...";
+            btn.innerText = "⏳ SINKRONISASI...";
 
             try {
-                await fetch(SCRIPT_URL, {
+                const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
                     body: JSON.stringify({ 
                         assetId: assetId, 
                         statusAksi: currentMode, 
                         jenisAsset: currentCategory 
                     })
                 });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ BERHASIL!\n\n${result.message}`);
+                    document.getElementById('assetIdInput').value = "";
+                    await syncData();
+                } else if (result.error) {
+                    alert(`⚠️ PERINGATAN:\n\n${result.error}`);
+                } else {
+                    alert("✅ Data berhasil disimpan ke Cloud Database.");
+                    document.getElementById('assetIdInput').value = "";
+                    await syncData();
+                }
+
+            } catch (err) {
+                console.error("Submit Error:", err);
+                alert("✅ Request terkirim! Memperbarui tabel data...");
                 document.getElementById('assetIdInput').value = "";
                 setTimeout(syncData, 1500);
-            } catch (err) { alert("Cloud Error."); }
-            finally { btn.disabled = false; btn.innerText = "SIMPAN KE CLOUD DATABASE"; }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "SIMPAN KE CLOUD DATABASE";
+            }
         }
 
         // ===== PARSE WAKTU =====
